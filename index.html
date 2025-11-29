@@ -114,7 +114,7 @@ button {
 /* FIXED CENTERED BUTTONS ABOVE BOTTOM - HIDDEN INITIALLY */
 .controls {
   position: absolute;
-  bottom: 12%; /* Centered above bottom */
+  bottom: 18%; /* Raised by ~50% */
   left: 50%;
   transform: translateX(-50%);
   display: none; /* hidden initially */
@@ -353,10 +353,8 @@ function drawOverlay() {
   const topMenuHeight = 60;
   const safeTop = parseInt(getComputedStyle(document.documentElement)
                      .getPropertyValue("env(safe-area-inset-top)")) || 0;
-  const safeBottom = parseInt(getComputedStyle(document.documentElement)
-                     .getPropertyValue("env(safe-area-inset-bottom)")) || 0;
 
-  const bottomControlsHeight = overlayCanvas.height * 0.12 + 50;
+  const bottomControlsHeight = overlayCanvas.height * 0.18 + 50; // matches raised controls
 
   // Font size 50% smaller
   const baseFontSize = Math.max(16, overlayCanvas.width * 0.04) * 0.5;
@@ -371,10 +369,9 @@ function drawOverlay() {
   const speedWidth = ctx.measureText(speedText).width;
   const centerX = overlayCanvas.width / 2;
 
-  // Vertical position: below menu but with padding, above buttons
   const minY = topMenuHeight + safeTop + 10;
   const maxY = overlayCanvas.height - bottomControlsHeight - baseFontSize*2 - 10;
-  const yPos = Math.min(minY, maxY); // ensures it's within visible range
+  const yPos = Math.min(minY, maxY);
 
   ctx.fillText(dateText, centerX - dateWidth/2, yPos);
   ctx.fillText(speedText, centerX - speedWidth/2, yPos + baseFontSize + 4);

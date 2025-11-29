@@ -17,9 +17,7 @@ body {
   position:relative;
 }
 
-/* ---------------------------------
-   NAVIGATION
----------------------------------- */
+/* NAVIGATION */
 nav {
   width:100%;
   background:#111;
@@ -43,9 +41,7 @@ nav button.active {
   background:#007bff;
 }
 
-/* ---------------------------------
-   MAIN PAGE WRAPPER
----------------------------------- */
+/* MAIN WRAPPER */
 #appPages {
   position:absolute;
   top:60px;
@@ -55,9 +51,7 @@ nav button.active {
   overflow:hidden;
 }
 
-/* ---------------------------------
-   DASHCAM PAGE
----------------------------------- */
+/* DASHCAM PAGE */
 #dashcamPage {
   width:100%;
   height:100%;
@@ -66,13 +60,15 @@ nav button.active {
   justify-content:center;
   align-items:center;
   text-align:center;
+  overflow:hidden;
 }
 
 #preview {
   position:absolute;
   top:0; left:0;
   width:100%; height:100%;
-  display:none; background:#111;
+  display:none;
+  background:#111;
   z-index:1;
   object-fit:cover;
 }
@@ -84,8 +80,6 @@ canvas {
   z-index:2;
   pointer-events:none;
 }
-
-/* Overlay text style handled via JS */
 
 #description {
   position:absolute;
@@ -139,9 +133,7 @@ button {
 #saveBtn { background:#007bff; color:white; }
 #stopBtn { background:#dc3545; color:white; }
 
-/* ---------------------------------
-   OTHER PAGES (FAQ, ABOUT, LEGAL, DONATIONS)
----------------------------------- */
+/* OTHER PAGES */
 .page {
   display:none;
   padding:20px;
@@ -203,90 +195,71 @@ h1 {
     </div>
   </div>
 
-  <!-- FAQ PAGE -->
+  <!-- FAQ -->
   <div id="faqPage" class="page">
     <h1>FAQ</h1>
-
     <div class="faq-item">
       <h3>How does this work?</h3>
       <p>
         Click Start when you're ready to start your drive.<br>
-        The camera keeps the last 5 minutes of recording.<br>
+        The camera keeps the last 5 minutes.<br>
         When something happens, press <b>Save Video</b>.
       </p>
     </div>
 
     <div class="faq-item">
       <h3>Why do you need camera access?</h3>
-      <p>
-        To function as a dash cam, camera access is required.
-      </p>
+      <p>To function as a dash cam, camera access is required.</p>
     </div>
 
     <div class="faq-item">
-      <h3>Do you store any videos or personal information?</h3>
-      <p>
-        No. Everything stays on your own device.
-      </p>
+      <h3>Do you store anything?</h3>
+      <p>No. Everything stays on your device.</p>
     </div>
 
     <div class="faq-item">
-      <h3>Will it work with the screen off?</h3>
+      <h3>Screen off?</h3>
       <p>No.</p>
     </div>
   </div>
 
-  <!-- ABOUT PAGE -->
+  <!-- ABOUT -->
   <div id="aboutPage" class="page">
     <h1>About RideCam.ca</h1>
     <p>
-      Ridecam.ca lets you use your phone as a Dash Camera to capture
-      important events while driving.
+      Ridecam.ca lets you use your phone as a Dash Camera to capture events while driving.
     </p>
     <p>
       Ridecam.ca is 100% free and collects <b>no personal data</b>.<br>
       All video stays <b>only on your device</b>.
     </p>
-    <p>Enjoy!</p>
   </div>
 
-  <!-- LEGAL PAGE -->
+  <!-- LEGAL -->
   <div id="legalPage" class="page">
     <h1>Legal Notice</h1>
-
     <h3>Safe Use</h3>
     <p>
-      • Only use the camera when it is safe to do so.<br>
-      • Never interact with the phone while driving.<br>
-      • Follow all local laws regarding mobile device usage.
+      • Only use the camera when safe.<br>
+      • Never interact while driving.<br>
+      • Follow all local laws.
     </p>
 
     <h3>No Liability</h3>
-    <p>
-      RideCam.ca is used <b>at your own risk</b>.<br>
-      The creator(s) are not responsible for damages, accidents, or losses.
-    </p>
+    <p>Use at your own risk.</p>
 
     <h3>No Warranty</h3>
-    <p>
-      Provided “as-is” with no guarantees of recording accuracy or availability.
-    </p>
-
-    <h3>User Responsibility</h3>
-    <p>
-      You are responsible for safe and lawful usage.
-    </p>
+    <p>Provided “as-is”.</p>
   </div>
 
-  <!-- DONATIONS PAGE -->
+  <!-- DONATIONS -->
   <div id="donationsPage" class="page">
     <h1>Support RideCam</h1>
     <p>
       RideCam.ca is 100% free and contains no ads.<br>
-      If you’d like to support the project, you can donate below.
+      If you'd like to support the project, you can donate below.
     </p>
 
-    <!-- Stripe Buy Button -->
     <script async src="https://js.stripe.com/v3/buy-button.js"></script>
 
     <stripe-buy-button
@@ -348,44 +321,52 @@ overlayCanvas.style.display = "none";
 document.body.appendChild(overlayCanvas);
 const ctx = overlayCanvas.getContext("2d");
 
-function pickMimeType() {
-  const options = [
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8",
-    "video/webm",
-    "video/mp4"
-  ];
-  for (let type of options) {
-    if (MediaRecorder.isTypeSupported(type)) return type;
-  }
-  return "video/webm";
-}
-
+/* ---------- UPDATED: ALWAYS VISIBLE OVERLAY ---------- */
 function resizeCanvas() {
-  overlayCanvas.width = preview.offsetWidth || window.innerWidth;
-  overlayCanvas.height = preview.offsetHeight || window.innerHeight - 60;
-  overlayCanvas.style.top = preview.offsetTop + 'px';
+  const rect = preview.getBoundingClientRect();
+
+  const width = rect.width || window.innerWidth;
+  const height = rect.height || (window.innerHeight - 60);
+
+  overlayCanvas.width = width;
+  overlayCanvas.height = height;
+
+  overlayCanvas.style.position = "absolute";
+  overlayCanvas.style.left = rect.left + "px";
+  overlayCanvas.style.top = rect.top + "px";
+  overlayCanvas.style.width = width + "px";
+  overlayCanvas.style.height = height + "px";
 }
-preview.addEventListener("loadedmetadata", resizeCanvas);
-window.addEventListener("resize", resizeCanvas);
 
-let speedKmh = 0; // placeholder for speed
+preview.addEventListener("loadedmetadata", () => {
+  setTimeout(resizeCanvas, 120);
+});
+window.addEventListener("resize", () => {
+  setTimeout(resizeCanvas, 120);
+});
+window.addEventListener("orientationchange", () => {
+  setTimeout(resizeCanvas, 250);
+});
 
+/* Draw overlay */
+let speedKmh = 0; // Placeholder
 function drawOverlay() {
   if (!drawing) return;
-  ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+
+  ctx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
   ctx.drawImage(preview, 0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  ctx.font = "16px Arial";
+  ctx.font = "20px Arial";
   ctx.fillStyle = "yellow";
   ctx.textBaseline = "top";
 
-  ctx.fillText(new Date().toLocaleString(), 8, 8);
-  ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 8, 28);
+  ctx.fillText(new Date().toLocaleString(), 12, 12);
+  ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 12, 36);
 
   requestAnimationFrame(drawOverlay);
 }
 
+/* Start Recording */
 async function startRecording() {
   try {
     mimeType = pickMimeType();
@@ -399,6 +380,8 @@ async function startRecording() {
     description.style.display = "none";
     controls.style.display = "flex";
     overlayCanvas.style.display = "block";
+
+    setTimeout(resizeCanvas, 200);
 
     drawing = true;
     drawOverlay();
@@ -422,8 +405,22 @@ async function startRecording() {
   }
 }
 
+function pickMimeType() {
+  const options = [
+    "video/webm;codecs=vp9",
+    "video/webm;codecs=vp8",
+    "video/webm",
+    "video/mp4"
+  ];
+  for (let type of options) {
+    if (MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return "video/webm";
+}
+
 startBtn.addEventListener("click", startRecording);
 
+/* Save video */
 saveBtn.addEventListener("click", () => {
   if (buffer.length === 0) {
     alert("No video recorded yet.");
@@ -438,6 +435,7 @@ saveBtn.addEventListener("click", () => {
   a.click();
 });
 
+/* Stop camera */
 function stopCamera() {
   drawing = false;
   overlayCanvas.style.display = "none";
@@ -448,7 +446,6 @@ function stopCamera() {
   startBtn.style.display = "block";
   description.style.display = "block";
 }
-
 stopBtn.addEventListener("click", stopCamera);
 </script>
 

@@ -111,21 +111,27 @@ button {
   cursor:pointer;
 }
 
-/* FIXED CENTERED BUTTONS ABOVE BOTTOM - HIDDEN INITIALLY */
+/* ---------- MODIFIED START BUTTON (100% LARGER) ---------- */
+#startBtn {
+  padding:36px 52px;   /* doubled */
+  font-size:44px;      /* doubled */
+}
+
+/* ---------- CONTROLS (Save + Stop) 100% LARGER & MOVED UP) ---------- */
 .controls {
   position: absolute;
-  bottom: 18%; /* Raised by ~50% */
+  bottom: 36%; /* raised 100% from 18% */
   left: 50%;
   transform: translateX(-50%);
-  display: none; /* hidden initially */
+  display: none;
   gap: 16px;
   z-index: 4;
 }
 
 .controls button {
-  padding: 14px 22px;
-  font-size: clamp(16px, 4vw, 20px);
-  border-radius: 10px;
+  padding:28px 44px;              /* doubled */
+  font-size:clamp(28px, 8vw, 40px); /* doubled */
+  border-radius:16px;
 }
 
 #saveBtn { background:#007bff; color:white; }
@@ -222,12 +228,8 @@ h1 {
     </div>
 
     <div class="faq-item">
-      <h3>Can your phone screen be off?</h3>
+      <h3>Screen off?</h3>
       <p>No.</p>
-    </div>
-    <div class="faq-item">
-      <h3>How am I doing?</h3>
-      <p>Great.</p>
     </div>
   </div>
 
@@ -268,9 +270,7 @@ h1 {
       If you'd like to support the project, you can donate below.
     </p>
 
-    <script async
-  src="https://js.stripe.com/v3/buy-button.js">
-</script>
+    <script async src="https://js.stripe.com/v3/buy-button.js"></script>
 
 <stripe-buy-button
   buy-button-id="buy_btn_1SYtSBLRKVOKcZZ1gFQfvk3V"
@@ -361,9 +361,8 @@ function drawOverlay() {
   const safeTop = parseInt(getComputedStyle(document.documentElement)
                      .getPropertyValue("env(safe-area-inset-top)")) || 0;
 
-  const bottomControlsHeight = overlayCanvas.height * 0.18 + 50; // matches raised controls
+  const bottomControlsHeight = overlayCanvas.height * 0.36 + 50; // updated for higher controls
 
-  // Font size 50% smaller
   const baseFontSize = Math.max(16, overlayCanvas.width * 0.04) * 0.5;
   ctx.font = `${baseFontSize}px Arial`;
   ctx.fillStyle = "yellow";
@@ -399,7 +398,7 @@ async function startRecording() {
     preview.style.display = "block";
     startBtn.style.display = "none";
     description.style.display = "none";
-    controls.style.display = "flex"; // Show save/stop
+    controls.style.display = "flex";
     overlayCanvas.style.display = "block";
     setTimeout(resizeCanvas, 200);
 
@@ -462,8 +461,8 @@ function stopCamera() {
   if (recorder) recorder.stop();
   if (stream) stream.getTracks().forEach(t => t.stop());
   preview.style.display = "none";
-  controls.style.display = "none"; // Hide save/stop
-  startBtn.style.display = "block"; // Show start
+  controls.style.display = "none";
+  startBtn.style.display = "block";
   description.style.display = "block";
 }
 

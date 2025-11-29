@@ -6,7 +6,6 @@
 
 <title>DashCam</title>
 
-<!-- Disable ALL caching -->
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -20,7 +19,6 @@ body {
   text-align:center;
 }
 
-/* Video behind UI */
 #preview {
   position:absolute; top:0; left:0;
   width:100%; height:auto;
@@ -28,15 +26,13 @@ body {
   z-index:1;
 }
 
-/* Overlay canvas above video but under buttons */
 canvas {
   position:absolute;
   top:0; left:0;
   z-index:2;
-  pointer-events:none; /* allow touches through canvas */
+  pointer-events:none;
 }
 
-/* Description text above Start button */
 #description {
   position:absolute;
   top:35%;
@@ -48,7 +44,6 @@ canvas {
   z-index:3;
 }
 
-/* Start button */
 .center-start {
   position:absolute;
   top:50%; left:50%;
@@ -66,10 +61,9 @@ button {
   cursor:pointer;
 }
 
-/* Controls row */
 .controls {
   position:absolute;
-  bottom:10vh;               /* moved higher to avoid being cut off */
+  bottom:10vh;
   left:50%;
   transform:translateX(-50%);
   width:90%;
@@ -91,23 +85,15 @@ button {
 #saveBtn { background:#007bff; color:white; }
 #stopBtn { background:#dc3545; color:white; }
 
-/* Small screen adjustments */
 @media(max-width:480px){
   .control-btn, button{
     padding:16px 22px;
     font-size:18px;
   }
-
-  #description {
-    font-size:16px;
-  }
+  #description { font-size:16px; }
 }
-
-/* Extra safety for very short screens */
 @media(max-height:700px){
-  .controls {
-    bottom:12vh;
-  }
+  .controls { bottom:12vh; }
 }
 </style>
 </head>
@@ -140,7 +126,6 @@ const description = document.getElementById("description");
 let mimeType = "";
 let drawing = false;
 
-// Overlay canvas
 const overlayCanvas = document.createElement("canvas");
 overlayCanvas.style.display = "none";
 document.body.appendChild(overlayCanvas);
@@ -172,14 +157,11 @@ let speedKmh = 0;
 
 function drawOverlay() {
   if (!drawing) return;
-
   ctx.drawImage(preview, 0, 0, overlayCanvas.width, overlayCanvas.height);
-
   ctx.font = "26px Arial";
   ctx.fillStyle = "yellow";
   ctx.fillText(new Date().toLocaleString(), 12, 40);
   ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 12, 80);
-
   requestAnimationFrame(drawOverlay);
 }
 
@@ -189,26 +171,21 @@ function watchSpeed() {
     (pos) => {
       const { latitude, longitude } = pos.coords;
       const now = pos.timestamp;
-
       if (lastPosition) {
         const R = 6371e3;
         const toRad = v=>v*Math.PI/180;
         const dLat = toRad(latitude - lastPosition.lat);
         const dLon = toRad(longitude - lastPosition.lon);
-
         const a =
           Math.sin(dLat/2)**2 +
           Math.cos(toRad(lastPosition.lat)) *
           Math.cos(toRad(latitude)) *
           Math.sin(dLon/2)**2;
-
         const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         const distance = R*c;
         const dt = (now - lastPosition.time)/1000;
-
         if (dt > 0) speedKmh = (distance/dt) * 3.6;
       }
-
       lastPosition = { lat: latitude, lon: longitude, time: now };
     },
     (err)=>console.warn(err),
@@ -219,16 +196,14 @@ function watchSpeed() {
 async function startRecording() {
   try {
     mimeType = pickMimeType();
-
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode:"environment" },
       audio: false
     });
-
     preview.srcObject = stream;
     preview.style.display = "block";
     startBtn.style.display = "none";
-    description.style.display = "none"; // hide description when recording
+    description.style.display = "none";
     controls.style.display = "flex";
     overlayCanvas.style.display = "block";
 
@@ -242,6 +217,7 @@ async function startRecording() {
     buffer = [];
     recorder = new MediaRecorder(combinedStream, { mimeType });
 
+    // **Small interval to start collecting chunks immediately**
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) {
         buffer.push(e.data);
@@ -249,8 +225,7 @@ async function startRecording() {
       }
     };
 
-    recorder.start(5000);
-
+    recorder.start(500); // collect chunks every 0.5s instead of 5s
   } catch (err) {
     alert("Camera access failed. Try tapping Start again.\n" + err);
   }
@@ -264,10 +239,8 @@ saveBtn.addEventListener("click", () => {
     alert("No video recorded yet.");
     return;
   }
-
   const blob = new Blob(buffer, { type: mimeType });
   const url = URL.createObjectURL(blob);
-
   const a = document.createElement("a");
   a.href = url;
   let ext = mimeType.includes("mp4") ? "mp4" : "webm";
@@ -280,16 +253,13 @@ stopBtn.addEventListener("click", () => {
   drawing = false;
   overlayCanvas.style.display = "none";
   speedKmh = 0;
-
   if (recorder) recorder.stop();
   if (stream) stream.getTracks().forEach(t => t.stop());
-
   preview.style.display = "none";
   controls.style.display = "none";
   startBtn.style.display = "block";
-  description.style.display = "block"; // show description again
+  description.style.display = "block";
 });
 </script>
-
 </body>
 </html>

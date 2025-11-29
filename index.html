@@ -111,23 +111,21 @@ button {
   cursor:pointer;
 }
 
+/* FIXED CENTERED BUTTONS ABOVE BOTTOM - HIDDEN INITIALLY */
 .controls {
-  position:absolute;
-  top:10px;
-  left:50%;
-  transform:translateX(-50%);
-  display:flex;
-  gap:14px;
-  display:none;
-  z-index:4;
+  position: absolute;
+  bottom: 12%; /* Centered above bottom */
+  left: 50%;
+  transform: translateX(-50%);
+  display: none; /* hidden initially */
+  gap: 16px;
+  z-index: 4;
 }
 
-.control-btn {
-  padding:12px 20px;
-  font-size:16px;
-  border:none;
-  border-radius:12px;
-  cursor:pointer;
+.controls button {
+  padding: 14px 22px;
+  font-size: clamp(16px, 4vw, 20px);
+  border-radius: 10px;
 }
 
 #saveBtn { background:#007bff; color:white; }
@@ -155,8 +153,9 @@ h1 {
   color:#0af;
 }
 
+/* MOBILE ADJUSTMENTS */
 @media(max-width:480px){
-  .control-btn, button{
+  .controls button, button{
     padding:10px 16px;
     font-size:14px;
   }
@@ -218,8 +217,8 @@ h1 {
     </div>
 
     <div class="faq-item">
-      <h3>Why do you need GPS access?</h3>
-      <p>Helps with the speedometer. GPS data is not saved in any way.</p>
+      <h3>Why do we need your location access?</h3>
+      <p>It's used to assist with calculating the speed for the speedometer.</p>
     </div>
 
     <div class="faq-item">
@@ -297,7 +296,6 @@ function showPage(page) {
   Object.values(navButtons).forEach(b => b.classList.remove("active"));
   pages[page].style.display = "block";
   navButtons[page].classList.add("active");
-
   if (page !== "dashcam") stopCamera();
 }
 
@@ -326,52 +324,65 @@ overlayCanvas.style.display = "none";
 document.body.appendChild(overlayCanvas);
 const ctx = overlayCanvas.getContext("2d");
 
-/* ---------- UPDATED: ALWAYS VISIBLE OVERLAY ---------- */
+/* ---------- CANVAS RESIZE ---------- */
 function resizeCanvas() {
   const rect = preview.getBoundingClientRect();
-
   const width = rect.width || window.innerWidth;
   const height = rect.height || (window.innerHeight - 60);
-
   overlayCanvas.width = width;
   overlayCanvas.height = height;
-
-  overlayCanvas.style.position = "absolute";
   overlayCanvas.style.left = rect.left + "px";
   overlayCanvas.style.top = rect.top + "px";
   overlayCanvas.style.width = width + "px";
   overlayCanvas.style.height = height + "px";
 }
 
-preview.addEventListener("loadedmetadata", () => {
-  setTimeout(resizeCanvas, 120);
-});
-window.addEventListener("resize", () => {
-  setTimeout(resizeCanvas, 120);
-});
-window.addEventListener("orientationchange", () => {
-  setTimeout(resizeCanvas, 250);
-});
+preview.addEventListener("loadedmetadata", () => setTimeout(resizeCanvas, 120));
+window.addEventListener("resize", () => setTimeout(resizeCanvas, 120));
+window.addEventListener("orientationchange", () => setTimeout(resizeCanvas, 250));
 
-/* Draw overlay */
-let speedKmh = 0; // Placeholder
+/* ---------- DRAW OVERLAY ---------- */
+let speedKmh = 0;
+
 function drawOverlay() {
   if (!drawing) return;
 
   ctx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
   ctx.drawImage(preview, 0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  ctx.font = "20px Arial";
+  const topMenuHeight = 60;
+  const safeTop = parseInt(getComputedStyle(document.documentElement)
+                     .getPropertyValue("env(safe-area-inset-top)")) || 0;
+  const safeBottom = parseInt(getComputedStyle(document.documentElement)
+                     .getPropertyValue("env(safe-area-inset-bottom)")) || 0;
+
+  const bottomControlsHeight = overlayCanvas.height * 0.12 + 50;
+
+  // Font size 50% smaller
+  const baseFontSize = Math.max(16, overlayCanvas.width * 0.04) * 0.5;
+  ctx.font = `${baseFontSize}px Arial`;
   ctx.fillStyle = "yellow";
   ctx.textBaseline = "top";
 
-  ctx.fillText(new Date().toLocaleString(), 12, 12);
-  ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 12, 36);
+  const dateText = new Date().toLocaleString();
+  const speedText = `Speed: ${speedKmh.toFixed(1)} km/h`;
+
+  const dateWidth = ctx.measureText(dateText).width;
+  const speedWidth = ctx.measureText(speedText).width;
+  const centerX = overlayCanvas.width / 2;
+
+  // Vertical position: below menu but with padding, above buttons
+  const minY = topMenuHeight + safeTop + 10;
+  const maxY = overlayCanvas.height - bottomControlsHeight - baseFontSize*2 - 10;
+  const yPos = Math.min(minY, maxY); // ensures it's within visible range
+
+  ctx.fillText(dateText, centerX - dateWidth/2, yPos);
+  ctx.fillText(speedText, centerX - speedWidth/2, yPos + baseFontSize + 4);
 
   requestAnimationFrame(drawOverlay);
 }
 
-/* Start Recording */
+/* ---------- START RECORDING ---------- */
 async function startRecording() {
   try {
     mimeType = pickMimeType();
@@ -379,13 +390,13 @@ async function startRecording() {
       video: { facingMode:"environment" },
       audio: false
     });
+
     preview.srcObject = stream;
     preview.style.display = "block";
     startBtn.style.display = "none";
     description.style.display = "none";
-    controls.style.display = "flex";
+    controls.style.display = "flex"; // Show save/stop
     overlayCanvas.style.display = "block";
-
     setTimeout(resizeCanvas, 200);
 
     drawing = true;
@@ -425,7 +436,7 @@ function pickMimeType() {
 
 startBtn.addEventListener("click", startRecording);
 
-/* Save video */
+/* ---------- SAVE VIDEO ---------- */
 saveBtn.addEventListener("click", () => {
   if (buffer.length === 0) {
     alert("No video recorded yet.");
@@ -440,18 +451,20 @@ saveBtn.addEventListener("click", () => {
   a.click();
 });
 
-/* Stop camera */
+/* ---------- STOP CAMERA ---------- */
 function stopCamera() {
   drawing = false;
   overlayCanvas.style.display = "none";
   if (recorder) recorder.stop();
   if (stream) stream.getTracks().forEach(t => t.stop());
   preview.style.display = "none";
-  controls.style.display = "none";
-  startBtn.style.display = "block";
+  controls.style.display = "none"; // Hide save/stop
+  startBtn.style.display = "block"; // Show start
   description.style.display = "block";
 }
+
 stopBtn.addEventListener("click", stopCamera);
+
 </script>
 
 </body>

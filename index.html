@@ -116,15 +116,15 @@ button {
 
 .controls {
   position:absolute;
-  bottom:10vh;
+  top:70px; /* moved to top under nav */
   left:50%;
   transform:translateX(-50%);
   width:90%;
   display:flex;
   justify-content:center;
   gap:14px;
-  display:none;
   z-index:3;
+  display:none;
 }
 
 .control-btn {
@@ -219,14 +219,6 @@ h1 {
       <h3>Why do you need camera access?</h3>
       <p>
         To function as a dash cam, camera access is required.
-      </p>
-    </div>
-
-    <div class="faq-item">
-      <h3>Why do you need location access?</h3>
-      <p>
-        To show your speed on the video overlay.<br>
-        No location data is stored or uploaded.
       </p>
     </div>
 
@@ -376,45 +368,13 @@ function resizeCanvas() {
 preview.addEventListener("loadedmetadata", resizeCanvas);
 window.addEventListener("resize", resizeCanvas);
 
-let lastPosition = null;
-let speedKmh = 0;
-
 function drawOverlay() {
   if (!drawing) return;
   ctx.drawImage(preview, 0, 0, overlayCanvas.width, overlayCanvas.height);
   ctx.font = "26px Arial";
   ctx.fillStyle = "yellow";
   ctx.fillText(new Date().toLocaleString(), 12, 40);
-  ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 12, 80);
   requestAnimationFrame(drawOverlay);
-}
-
-function watchSpeed() {
-  if (!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(
-    (pos) => {
-      const { latitude, longitude } = pos.coords;
-      const now = pos.timestamp;
-      if (lastPosition) {
-        const R = 6371e3;
-        const toRad = v=>v*Math.PI/180;
-        const dLat = toRad(latitude - lastPosition.lat);
-        const dLon = toRad(longitude - lastPosition.lon);
-        const a =
-          Math.sin(dLat/2)**2 +
-          Math.cos(toRad(lastPosition.lat)) *
-          Math.cos(toRad(latitude)) *
-          Math.sin(dLon/2)**2;
-        const c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distance = R*c;
-        const dt = (now - lastPosition.time)/1000;
-        if (dt > 0) speedKmh = (distance/dt) * 3.6;
-      }
-      lastPosition = { lat: latitude, lon: longitude, time: now };
-    },
-    (err)=>console.warn(err),
-    { enableHighAccuracy:true, maximumAge:1000, timeout:5000 }
-  );
 }
 
 async function startRecording() {
@@ -433,7 +393,6 @@ async function startRecording() {
 
     drawing = true;
     drawOverlay();
-    watchSpeed();
 
     const combinedStream = overlayCanvas.captureStream(30);
     stream.getTracks().forEach(t => combinedStream.addTrack(t));
@@ -473,7 +432,6 @@ saveBtn.addEventListener("click", () => {
 function stopCamera() {
   drawing = false;
   overlayCanvas.style.display = "none";
-  speedKmh = 0;
   if (recorder) recorder.stop();
   if (stream) stream.getTracks().forEach(t => t.stop());
   preview.style.display = "none";

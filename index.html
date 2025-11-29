@@ -69,21 +69,24 @@ nav button.active {
 }
 
 #preview {
-  position:absolute; top:60px; left:0;
-  width:100%; height:auto;
+  position:absolute;
+  top:0; left:0;
+  width:100%; height:100%;
   display:none; background:#111;
   z-index:1;
+  object-fit:cover;
 }
 
 canvas {
   position: absolute;
-  top:60px; /* below nav bar */
-  left: 0;
+  top:0;
+  left:0;
   z-index:2;
   pointer-events:none;
 }
 
-/* Always centered text */
+/* Overlay text style handled via JS */
+
 #description {
   position:absolute;
   top:50%;
@@ -96,7 +99,6 @@ canvas {
   line-height:1.4em;
 }
 
-/* Start button centered */
 .center-start {
   position:absolute;
   top:65%;
@@ -117,20 +119,18 @@ button {
 
 .controls {
   position:absolute;
-  top:70px; /* place above video, always visible */
+  top:10px;
   left:50%;
   transform:translateX(-50%);
-  width:auto;
   display:flex;
-  justify-content:center;
   gap:14px;
   display:none;
   z-index:4;
 }
 
 .control-btn {
-  padding:14px 20px;
-  font-size:18px;
+  padding:12px 20px;
+  font-size:16px;
   border:none;
   border-radius:12px;
   cursor:pointer;
@@ -165,8 +165,8 @@ h1 {
 
 @media(max-width:480px){
   .control-btn, button{
-    padding:12px 18px;
-    font-size:16px;
+    padding:10px 16px;
+    font-size:14px;
   }
   #description { font-size:18px; }
 }
@@ -362,24 +362,27 @@ function pickMimeType() {
 }
 
 function resizeCanvas() {
-  overlayCanvas.width = preview.videoWidth || window.innerWidth;
-  overlayCanvas.height = preview.videoHeight || window.innerHeight - 60;
-  overlayCanvas.style.top = '60px';
+  overlayCanvas.width = preview.offsetWidth || window.innerWidth;
+  overlayCanvas.height = preview.offsetHeight || window.innerHeight - 60;
+  overlayCanvas.style.top = preview.offsetTop + 'px';
 }
 preview.addEventListener("loadedmetadata", resizeCanvas);
 window.addEventListener("resize", resizeCanvas);
 
-let speedKmh = 0; // speed removed from GPS; just placeholder 0
+let speedKmh = 0; // placeholder for speed
 
 function drawOverlay() {
   if (!drawing) return;
   ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
   ctx.drawImage(preview, 0, 0, overlayCanvas.width, overlayCanvas.height);
-  ctx.font = "26px Arial";
+
+  ctx.font = "16px Arial";
   ctx.fillStyle = "yellow";
   ctx.textBaseline = "top";
-  ctx.fillText(new Date().toLocaleString(), 12, 12);
-  ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 12, 48);
+
+  ctx.fillText(new Date().toLocaleString(), 8, 8);
+  ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 8, 28);
+
   requestAnimationFrame(drawOverlay);
 }
 

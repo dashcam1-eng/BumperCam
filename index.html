@@ -120,20 +120,21 @@ button {
   font-size:44px;
 }
 
+/* ---------- Controls ---------- */
 .controls {
   position: absolute;
-  bottom: 36%;
+  bottom:10%;   /* move up */
   left: 50%;
   transform: translateX(-50%);
   display: none;
-  gap: 16px;
+  gap: 8px;
   z-index: 4;
 }
 
 .controls button {
-  padding:28px 44px;
-  font-size:clamp(28px, 8vw, 40px);
-  border-radius:16px;
+  padding:7px 12px;        /* 400% smaller */
+  font-size:14px;
+  border-radius:8px;
 }
 
 #saveBtn { background:#007bff; color:white; }
@@ -170,7 +171,6 @@ button {
 #saveMP4 { background:#ff9800; color:white; }
 #saveGIF { background:#ff33cc; color:white; }
 #cancelFormat { background:#555; color:white; padding:10px 16px; font-size:18px; }
-
 </style>
 </head>
 
@@ -272,7 +272,6 @@ const navButtons = {
   dashcam: document.getElementById("navDashcam"),
   faq: document.getElementById("navFAQ")
 };
-
 function showPage(page) {
   Object.values(pages).forEach(p => p.style.display = "none");
   Object.values(navButtons).forEach(b => b.classList.remove("active"));
@@ -318,9 +317,16 @@ function drawOverlay() {
   ctx.clearRect(0,0,overlayCanvas.width, overlayCanvas.height);
   ctx.drawImage(preview, 0, 0, overlayCanvas.width, overlayCanvas.height);
 
-  ctx.font = "20px Arial";
+  // Watermark ridecam.ca - 500% larger
+  ctx.font = "40px Arial";  
   ctx.fillStyle = "yellow";
+  ctx.fillText("ridecam.ca", 20, 90);
+
+  // Date/time
+  ctx.font = "20px Arial";
   ctx.fillText(new Date().toLocaleString(), 20, 20);
+
+  // Speed
   ctx.fillText(`Speed: ${speedKmh.toFixed(1)} km/h`, 20, 50);
 
   requestAnimationFrame(drawOverlay);
@@ -370,13 +376,11 @@ const saveWebM = document.getElementById("saveWebM");
 const saveMP4 = document.getElementById("saveMP4");
 const saveGIF = document.getElementById("saveGIF");
 const cancelFormat = document.getElementById("cancelFormat");
-const box = popup.querySelector(".box");
 
 saveBtn.onclick = () => {
   if (buffer.length === 0) return alert("No video yet.");
   popup.style.display = "flex";
 };
-
 cancelFormat.onclick = () => popup.style.display = "none";
 
 /* ---------- Save WebM ---------- */
@@ -391,49 +395,56 @@ saveWebM.onclick = () => {
 
 /* ---------- Save MP4 ---------- */
 saveMP4.onclick = async () => {
-  const original = box.innerHTML;
-  box.innerHTML = "<h3 style='color:white;'>Converting to MP4... Please wait</h3>";
+  popup.style.display = "none";
+  const processingPopup = document.createElement("div");
+  processingPopup.style.cssText = `
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    display:flex; justify-content:center; align-items:center;
+    background: rgba(0,0,0,0.85); color:white; font-size:22px; z-index:9999;`;
+  processingPopup.innerText = "Converting to MP4... Please wait";
+  document.body.appendChild(processingPopup);
 
   const blob = new Blob(buffer, { type: mimeType });
   const uint8 = new Uint8Array(await blob.arrayBuffer());
-
   const { createFFmpeg } = FFmpeg;
   const ffmpeg = createFFmpeg({ log: false });
 
   try {
     await ffmpeg.load();
     ffmpeg.FS("writeFile", "input.webm", uint8);
-
     await ffmpeg.run(
-      "-i", "input.webm",
-      "-c:v", "libx264",
-      "-preset", "veryfast",
-      "-movflags", "faststart",
+      "-i","input.webm",
+      "-c:v","libx264",
+      "-preset","veryfast",
+      "-movflags","faststart",
       "output.mp4"
     );
 
-    const data = ffmpeg.FS("readFile", "output.mp4");
-    const mp4Blob = new Blob([data.buffer], { type: "video/mp4" });
+    const data = ffmpeg.FS("readFile","output.mp4");
+    const mp4Blob = new Blob([data.buffer], { type:"video/mp4" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(mp4Blob);
     a.download = `dashcam_${new Date().toISOString()}.mp4`;
     a.click();
-  } catch (err) {
-    alert("MP4 conversion failed.");
+  } catch(err){
+    alert("MP4 conversion failed: "+err);
   }
-
-  box.innerHTML = original;
-  popup.style.display = "none";
+  document.body.removeChild(processingPopup);
 };
 
 /* ---------- Save GIF ---------- */
 saveGIF.onclick = async () => {
-  const original = box.innerHTML;
-  box.innerHTML = "<h3 style='color:white;'>Converting to GIF... Please wait</h3>";
+  popup.style.display = "none";
+  const processingPopup = document.createElement("div");
+  processingPopup.style.cssText = `
+    position:fixed; top:0; left:0; width:100%; height:100%;
+    display:flex; justify-content:center; align-items:center;
+    background: rgba(0,0,0,0.85); color:white; font-size:22px; z-index:9999;`;
+  processingPopup.innerText = "Converting to GIF... Please wait";
+  document.body.appendChild(processingPopup);
 
   const blob = new Blob(buffer, { type: mimeType });
   const uint8 = new Uint8Array(await blob.arrayBuffer());
-
   const { createFFmpeg } = FFmpeg;
   const ffmpeg = createFFmpeg({ log: false });
 
@@ -441,32 +452,31 @@ saveGIF.onclick = async () => {
     await ffmpeg.load();
     ffmpeg.FS("writeFile", "input.webm", uint8);
 
-    // Create palette for high quality GIF
+    // Palette generation
     await ffmpeg.run(
-      "-i", "input.webm",
-      "-vf", "fps=10,scale=iw:-1:flags=lanczos,palettegen",
+      "-i","input.webm",
+      "-vf","fps=10,scale=iw:-1:flags=lanczos,palettegen",
       "palette.png"
     );
 
+    // GIF creation
     await ffmpeg.run(
-      "-i", "input.webm",
-      "-i", "palette.png",
-      "-lavfi", "fps=10,scale=iw:-1:flags=lanczos[p];[p][1:v]paletteuse",
+      "-i","input.webm",
+      "-i","palette.png",
+      "-lavfi","fps=10,scale=iw:-1:flags=lanczos[x];[x][1:v]paletteuse",
       "output.gif"
     );
 
-    const data = ffmpeg.FS("readFile", "output.gif");
-    const gifBlob = new Blob([data.buffer], { type: "image/gif" });
+    const data = ffmpeg.FS("readFile","output.gif");
+    const gifBlob = new Blob([data.buffer], { type:"image/gif" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(gifBlob);
     a.download = `dashcam_${new Date().toISOString()}.gif`;
     a.click();
-  } catch (err) {
-    alert("GIF conversion failed.");
+  } catch(err){
+    alert("GIF conversion failed: "+err);
   }
-
-  box.innerHTML = original;
-  popup.style.display = "none";
+  document.body.removeChild(processingPopup);
 };
 
 /* ---------- Stop ---------- */
@@ -479,9 +489,8 @@ function stopCamera() {
   controls.style.display = "none";
   startBtn.style.display = "block";
 }
-
 stopBtn.onclick = stopCamera;
-
 </script>
+
 </body>
 </html>

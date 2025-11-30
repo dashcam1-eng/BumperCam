@@ -114,14 +114,14 @@ button {
 
 /* ---------- MODIFIED START BUTTON (100% LARGER) ---------- */
 #startBtn {
-  padding:36px 52px;   /* doubled */
-  font-size:44px;      /* doubled */
+  padding:36px 52px;
+  font-size:44px;
 }
 
 /* ---------- CONTROLS (Save + Stop) 100% LARGER & MOVED UP) ---------- */
 .controls {
   position: absolute;
-  bottom: 36%; /* raised 100% from 18% */
+  bottom: 36%;
   left: 50%;
   transform: translateX(-50%);
   display: none;
@@ -130,8 +130,8 @@ button {
 }
 
 .controls button {
-  padding:28px 44px;              /* doubled */
-  font-size:clamp(28px, 8vw, 40px); /* doubled */
+  padding:28px 44px;
+  font-size:clamp(28px, 8vw, 40px);
   border-radius:16px;
 }
 
@@ -224,18 +224,18 @@ h1 {
     </div>
 
     <div class="faq-item">
-      <h3>Why do we need your location access?</h3>
-      <p>It's used to assist with calculating the speed for the speedometer.</p>
+      <h3>Why location access?</h3>
+      <p>It’s used to calculate driving speed.</p>
     </div>
 
     <div class="faq-item">
-      <h3>Can my screen be off?</h3>
-      <p>No, the camera needs to be active to work.</p>
+      <h3>Screen off?</h3>
+      <p>No, the camera must stay active.</p>
     </div>
 
-      <div class="faq-item">
+    <div class="faq-item">
       <h3>How am I doing?</h3>
-      <p>Great! thank you for asking. </p>
+      <p>Great! Thanks for asking.</p>
     </div>
   </div>
 
@@ -243,11 +243,11 @@ h1 {
   <div id="aboutPage" class="page">
     <h1>About RideCam.ca</h1>
     <p>
-      Ridecam.ca lets you use your phone as a Dash Camera to capture events while driving.
+      Ridecam.ca lets you use your phone as a Dash Camera.
     </p>
     <p>
-      Ridecam.ca is 100% free and collects <b>no personal data</b>.<br>
-      All video stays <b>only on your device</b>.
+      100% free. No data collection.<br>
+      All video stays on your device.
     </p>
   </div>
 
@@ -258,7 +258,7 @@ h1 {
     <p>
       • Only use the camera when safe.<br>
       • Never interact while driving.<br>
-      • Follow all local laws.
+      • Follow all laws.
     </p>
 
     <h3>No Liability</h3>
@@ -272,8 +272,8 @@ h1 {
   <div id="donationsPage" class="page">
     <h1>Support RideCam</h1>
     <p>
-      RideCam.ca is 100% free and contains no ads.<br>
-      If you'd like to support the project, you can donate below.
+      RideCam.ca is 100% free and has no ads.<br>
+      You can donate below if you'd like to support development.
     </p>
 
     <script async src="https://js.stripe.com/v3/buy-button.js"></script>
@@ -367,7 +367,7 @@ function drawOverlay() {
   const safeTop = parseInt(getComputedStyle(document.documentElement)
                      .getPropertyValue("env(safe-area-inset-top)")) || 0;
 
-  const bottomControlsHeight = overlayCanvas.height * 0.36 + 50; // updated for higher controls
+  const bottomControlsHeight = overlayCanvas.height * 0.36 + 50; 
 
   const baseFontSize = Math.max(16, overlayCanvas.width * 0.04) * 0.5;
   ctx.font = `${baseFontSize}px Arial`;
@@ -387,6 +387,18 @@ function drawOverlay() {
 
   ctx.fillText(dateText, centerX - dateWidth/2, yPos);
   ctx.fillText(speedText, centerX - speedWidth/2, yPos + baseFontSize + 4);
+
+  /* ---------- WATERMARK ---------- */
+  ctx.font = `${baseFontSize * 0.8}px Arial`;
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.textBaseline = "bottom";
+
+  const watermark = "Ridecam.ca";
+  const wmWidth = ctx.measureText(watermark).width;
+  const wmX = overlayCanvas.width - wmWidth - 20;
+  const wmY = overlayCanvas.height - 20;
+
+  ctx.fillText(watermark, wmX, wmY);
 
   requestAnimationFrame(drawOverlay);
 }

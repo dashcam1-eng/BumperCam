@@ -273,10 +273,7 @@ const saveGIF=document.getElementById("saveGIF");
 const cancelFormat=document.getElementById("cancelFormat");
 const statusText=document.getElementById("statusText");
 
-saveBtn.addEventListener("click",()=>{
-  if(buffer.length===0){alert("No video recorded yet."); return;}
-  popup.style.display="flex"; statusText.innerText="";
-});
+saveBtn.addEventListener("click",()=>{ if(buffer.length===0){alert("No video recorded yet."); return;} popup.style.display="flex"; statusText.innerText=""; });
 cancelFormat.onclick=()=>popup.style.display="none";
 
 /* ---------- SAVE WEBM ---------- */
@@ -289,106 +286,65 @@ saveWebM.onclick=()=>{
   popup.style.display="none";
 };
 
-/* ---------- SAVE MP4 WITH FALLBACK ---------- */
+/* ---------- SAVE MP4 ---------- */
 saveMP4.onclick=async()=>{
   if(buffer.length===0){alert("No video recorded yet."); return;}
 
-  // ❗ iOS and unsupported browsers
   if(!canEncodeMP4()){
     popup.style.display="none";
-
     const blob = new Blob(buffer, { type: mimeType });
     const url = URL.createObjectURL(blob);
-
-    if(confirm(
-      "⚠ Your browser cannot convert WebM to MP4.\n\n" +
-      "You can save the WebM file and convert it using:\n" +
-      "- https://cloudconvert.com/webm-to-mp4\n" +
-      "- VLC Media Player\n\n" +
-      "Press OK to download the WebM file now."
-    )) {
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `dashcam_${new Date().toISOString()}.webm`;
-      a.click();
+    if(confirm("⚠ Your browser cannot convert WebM to MP4.\nSave WebM instead?")){
+      const a=document.createElement("a"); a.href=url; a.download=`dashcam_${new Date().toISOString()}.webm`; a.click();
     }
     return;
   }
 
-  /* ---------- FULL MP4 CONVERSION ---------- */
   statusText.innerText="Converting to MP4... Please wait";
   saveMP4.disabled = saveGIF.disabled = saveWebM.disabled = true;
 
   try{
-    const blob=new Blob(buffer,{type:mimeType});
-    const uint8=new Uint8Array(await blob.arrayBuffer());
-
-    const { FFmpeg } = window.FFmpeg;
-    const ffmpeg = new FFmpeg();
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
     await ffmpeg.load();
 
-    await ffmpeg.writeFile("input.webm", uint8);
-
-    await ffmpeg.exec([
-      "-i","input.webm",
-      "-c:v","libx264",
-      "-preset","veryfast",
-      "-movflags","faststart",
-      "output.mp4"
-    ]);
-
-    const data = await ffmpeg.readFile("output.mp4");
-
-    const mp4Blob = new Blob([data.buffer], { type:"video/mp4" });
-    const a = document.createElement("a");
+    const blob = new Blob(buffer,{type:mimeType});
+    await ffmpeg.FS('writeFile','input.webm',await fetchFile(blob));
+    await ffmpeg.run('-i','input.webm','-c:v','libx264','-preset','veryfast','-movflags','faststart','output.mp4');
+    const data = ffmpeg.FS('readFile','output.mp4');
+    const mp4Blob = new Blob([data.buffer],{type:'video/mp4'});
+    const a = document.createElement('a');
     a.href = URL.createObjectURL(mp4Blob);
     a.download = `dashcam_${new Date().toISOString()}.mp4`;
     a.click();
-
-  }catch(err){
-    alert("MP4 Conversion Failed:\n"+err);
-  }
+  } catch(err){ alert("MP4 Conversion Failed:\n"+err); }
 
   statusText.innerText="";
   popup.style.display="none";
   saveMP4.disabled = saveGIF.disabled = saveWebM.disabled = false;
 };
 
-/* ---------- SAVE GIF (HIGH QUALITY) ---------- */
+/* ---------- SAVE GIF ---------- */
 saveGIF.onclick=async()=>{
   if(buffer.length===0){alert("No video recorded yet."); return;}
-
   statusText.innerText="Converting to high-quality GIF... Please wait";
   saveGIF.disabled = saveMP4.disabled = saveWebM.disabled = true;
 
   try{
-    const blob=new Blob(buffer,{type:mimeType});
-    const uint8=new Uint8Array(await blob.arrayBuffer());
-
-    const { FFmpeg } = window.FFmpeg;
-    const ffmpeg = new FFmpeg();
+    const { createFFmpeg, fetchFile } = FFmpeg;
+    const ffmpeg = createFFmpeg({ log: true });
     await ffmpeg.load();
 
-    await ffmpeg.writeFile("input.webm", uint8);
-
-    await ffmpeg.exec([
-      "-i","input.webm",
-      "-vf","fps=12,scale=720:-1:flags=lanczos",
-      "-loop","0",
-      "output.gif"
-    ]);
-
-    const data = await ffmpeg.readFile("output.gif");
-
-    const gifBlob = new Blob([data.buffer], { type:"image/gif" });
-    const a = document.createElement("a");
+    const blob = new Blob(buffer,{type:mimeType});
+    await ffmpeg.FS('writeFile','input.webm',await fetchFile(blob));
+    await ffmpeg.run('-i','input.webm','-vf','fps=12,scale=720:-1:flags=lanczos','-loop','0','output.gif');
+    const data = ffmpeg.FS('readFile','output.gif');
+    const gifBlob = new Blob([data.buffer],{type:'image/gif'});
+    const a = document.createElement('a');
     a.href = URL.createObjectURL(gifBlob);
     a.download = `dashcam_${new Date().toISOString()}.gif`;
     a.click();
-
-  }catch(err){
-    alert("GIF Conversion Failed:\n"+err);
-  }
+  } catch(err){ alert("GIF Conversion Failed:\n"+err); }
 
   statusText.innerText="";
   popup.style.display="none";

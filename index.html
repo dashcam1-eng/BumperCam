@@ -198,11 +198,15 @@ function drawOverlay(){
   if(!drawing) return;
   ctx.clearRect(0,0,overlayCanvas.width,overlayCanvas.height);
   ctx.drawImage(preview,0,0,overlayCanvas.width,overlayCanvas.height);
+
   const topMenuHeight=60;
   const bottomControlsHeight=overlayCanvas.height*0.36+50;
   const baseFontSize=Math.max(16,overlayCanvas.width*0.04)*0.5;
+
+  // Date & speed
   ctx.font=`${baseFontSize}px Arial`;
-  ctx.fillStyle="yellow"; ctx.textBaseline="top";
+  ctx.fillStyle="yellow";
+  ctx.textBaseline="top";
   const dateText=new Date().toLocaleString();
   const speedText=`Speed: ${speedKmh.toFixed(1)} km/h`;
   const centerX=overlayCanvas.width/2;
@@ -211,12 +215,15 @@ function drawOverlay(){
   const yPos=Math.min(minY,maxY);
   ctx.fillText(dateText,centerX-ctx.measureText(dateText).width/2,yPos);
   ctx.fillText(speedText,centerX-ctx.measureText(speedText).width/2,yPos+baseFontSize+4);
-  // watermark
+
+  // Watermark centered at bottom
   ctx.font=`${baseFontSize*4}px Arial`; 
   ctx.fillStyle="rgba(255,255,255,0.85)"; 
   ctx.textBaseline="bottom";
   const watermark="Ridecam.ca";
-  ctx.fillText(watermark,overlayCanvas.width-ctx.measureText(watermark).width-20,overlayCanvas.height-20);
+  const watermarkX = overlayCanvas.width/2 - ctx.measureText(watermark).width/2; // center horizontally
+  ctx.fillText(watermark, watermarkX, overlayCanvas.height - 20);
+
   requestAnimationFrame(drawOverlay);
 }
 
@@ -234,7 +241,7 @@ async function startRecording(){
     stream.getTracks().forEach(t=>combinedStream.addTrack(t));
     buffer=[];
     recorder=new MediaRecorder(combinedStream,{mimeType});
-    recorder.ondataavailable=e=>{if(e.data.size>0){buffer.push(e.data); if(buffer.length>maxChunks) buffer.shift();}};
+    recorder.ondataavailable=e=>{if(e.data.size>0){buffer.push(e.data); if(buffer.length>maxChunks) buffer.shift();}}; 
     recorder.start(500);
   } catch(err){alert("Camera access failed.\n"+err);}
 }

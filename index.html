@@ -9,7 +9,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 
-<!-- FFmpeg for MP4/GIF conversion -->
+<!-- Correct FFmpeg build -->
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
 
 <style>
@@ -87,8 +87,8 @@ h1 { text-align:center; margin-top:10px; }
     <button id="startBtn" class="center-start">Start</button>
     <video id="preview" autoplay playsinline muted></video>
     <div id="controls" class="controls">
-      <button id="saveBtn" class="control-btn">Save Video</button>
-      <button id="stopBtn" class="control-btn">Stop</button>
+      <button id="saveBtn">Save Video</button>
+      <button id="stopBtn">Stop</button>
     </div>
   </div>
 
@@ -101,7 +101,7 @@ h1 { text-align:center; margin-top:10px; }
       <p>WebM by default. You can convert to MP4 or GIF in browser.</p>
     </div>
     <div class="faq-item"><h3>iOS?</h3>
-      <p>WebM may need conversion to view on iOS browsers.</p>
+      <p>iOS Safari cannot convert WebM → MP4. You will get a fallback option.</p>
     </div>
   </div>
 
@@ -164,6 +164,17 @@ navButtons.about.onclick = () => showPage("about");
 navButtons.legal.onclick = () => showPage("legal");
 navButtons.donations.onclick = () => showPage("donations");
 
+/* ---------- CAPABILITY DETECTION ---------- */
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+         (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function canEncodeMP4() {
+  if (isIOS()) return false;
+  return typeof SharedArrayBuffer !== "undefined";
+}
+
 /* ---------- DASHCAM ---------- */
 let stream, recorder, buffer=[];
 const maxChunks=60;
@@ -203,25 +214,26 @@ function drawOverlay(){
   const bottomControlsHeight=overlayCanvas.height*0.36+50;
   const baseFontSize=Math.max(16,overlayCanvas.width*0.04)*0.5;
 
-  // Date & speed
   ctx.font=`${baseFontSize}px Arial`;
   ctx.fillStyle="yellow";
   ctx.textBaseline="top";
   const dateText=new Date().toLocaleString();
   const speedText=`Speed: ${speedKmh.toFixed(1)} km/h`;
   const centerX=overlayCanvas.width/2;
+
   const minY=topMenuHeight+10;
   const maxY=overlayCanvas.height-bottomControlsHeight-baseFontSize*2-10;
   const yPos=Math.min(minY,maxY);
+
   ctx.fillText(dateText,centerX-ctx.measureText(dateText).width/2,yPos);
   ctx.fillText(speedText,centerX-ctx.measureText(speedText).width/2,yPos+baseFontSize+4);
 
-  // Watermark centered at bottom
-  ctx.font=`${baseFontSize*4}px Arial`; 
-  ctx.fillStyle="rgba(255,255,255,0.85)"; 
+  // Watermark
+  ctx.font=`${baseFontSize*4}px Arial`;
+  ctx.fillStyle="rgba(255,255,255,0.85)";
   ctx.textBaseline="bottom";
   const watermark="Ridecam.ca";
-  const watermarkX = overlayCanvas.width/2 - ctx.measureText(watermark).width/2; // center horizontally
+  const watermarkX = overlayCanvas.width/2 - ctx.measureText(watermark).width/2;
   ctx.fillText(watermark, watermarkX, overlayCanvas.height - 20);
 
   requestAnimationFrame(drawOverlay);
@@ -247,13 +259,13 @@ async function startRecording(){
 }
 
 function pickMimeType(){
-  const options=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm","video/mp4"];
+  const options=["video/webm;codecs=vp9","video/webm;codecs=vp8","video/webm"];
   for(let type of options) if(MediaRecorder.isTypeSupported(type)) return type;
   return "video/webm";
 }
 startBtn.addEventListener("click",startRecording);
 
-/* ---------- SAVE POPUP ---------- */
+/* ---------- FORMAT POPUP ---------- */
 const popup=document.getElementById("formatPopup");
 const saveWebM=document.getElementById("saveWebM");
 const saveMP4=document.getElementById("saveMP4");
@@ -277,54 +289,110 @@ saveWebM.onclick=()=>{
   popup.style.display="none";
 };
 
-/* ---------- SAVE MP4 ---------- */
+/* ---------- SAVE MP4 WITH FALLBACK ---------- */
 saveMP4.onclick=async()=>{
   if(buffer.length===0){alert("No video recorded yet."); return;}
+
+  // ❗ iOS and unsupported browsers
+  if(!canEncodeMP4()){
+    popup.style.display="none";
+
+    const blob = new Blob(buffer, { type: mimeType });
+    const url = URL.createObjectURL(blob);
+
+    if(confirm(
+      "⚠ Your browser cannot convert WebM to MP4.\n\n" +
+      "You can save the WebM file and convert it using:\n" +
+      "- https://cloudconvert.com/webm-to-mp4\n" +
+      "- VLC Media Player\n\n" +
+      "Press OK to download the WebM file now."
+    )) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `dashcam_${new Date().toISOString()}.webm`;
+      a.click();
+    }
+    return;
+  }
+
+  /* ---------- FULL MP4 CONVERSION ---------- */
   statusText.innerText="Converting to MP4... Please wait";
   saveMP4.disabled = saveGIF.disabled = saveWebM.disabled = true;
+
   try{
     const blob=new Blob(buffer,{type:mimeType});
     const uint8=new Uint8Array(await blob.arrayBuffer());
-    const { createFFmpeg }=FFmpeg;
-    const ffmpeg=createFFmpeg({ log:false, corePath:'https://unpkg.com/@ffmpeg/core@0.12.6/ffmpeg-core.js', worker:true });
+
+    const { FFmpeg } = window.FFmpeg;
+    const ffmpeg = new FFmpeg();
     await ffmpeg.load();
-    ffmpeg.FS("writeFile","input.webm",uint8);
-    await ffmpeg.run("-i","input.webm","-c:v","libx264","-preset","veryfast","-movflags","faststart","output.mp4");
-    const data=ffmpeg.FS("readFile","output.mp4");
-    const mp4Blob=new Blob([data.buffer],{type:"video/mp4"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(mp4Blob);
-    a.download=`dashcam_${new Date().toISOString()}.mp4`;
+
+    await ffmpeg.writeFile("input.webm", uint8);
+
+    await ffmpeg.exec([
+      "-i","input.webm",
+      "-c:v","libx264",
+      "-preset","veryfast",
+      "-movflags","faststart",
+      "output.mp4"
+    ]);
+
+    const data = await ffmpeg.readFile("output.mp4");
+
+    const mp4Blob = new Blob([data.buffer], { type:"video/mp4" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(mp4Blob);
+    a.download = `dashcam_${new Date().toISOString()}.mp4`;
     a.click();
-  }catch(err){alert("MP4 Conversion Failed:\n"+err);}
+
+  }catch(err){
+    alert("MP4 Conversion Failed:\n"+err);
+  }
+
   statusText.innerText="";
   popup.style.display="none";
   saveMP4.disabled = saveGIF.disabled = saveWebM.disabled = false;
 };
 
-/* ---------- SAVE GIF ---------- */
+/* ---------- SAVE GIF (HIGH QUALITY) ---------- */
 saveGIF.onclick=async()=>{
   if(buffer.length===0){alert("No video recorded yet."); return;}
-  statusText.innerText="Converting to GIF... Please wait";
-  saveMP4.disabled = saveGIF.disabled = saveWebM.disabled = true;
+
+  statusText.innerText="Converting to high-quality GIF... Please wait";
+  saveGIF.disabled = saveMP4.disabled = saveWebM.disabled = true;
+
   try{
     const blob=new Blob(buffer,{type:mimeType});
     const uint8=new Uint8Array(await blob.arrayBuffer());
-    const { createFFmpeg }=FFmpeg;
-    const ffmpeg=createFFmpeg({ log:false, corePath:'https://unpkg.com/@ffmpeg/core@0.12.6/ffmpeg-core.js', worker:true });
+
+    const { FFmpeg } = window.FFmpeg;
+    const ffmpeg = new FFmpeg();
     await ffmpeg.load();
-    ffmpeg.FS("writeFile","input.webm",uint8);
-    await ffmpeg.run("-i","input.webm","-vf","fps=10,scale=480:-1:flags=lanczos","output.gif");
-    const data=ffmpeg.FS("readFile","output.gif");
-    const gifBlob=new Blob([data.buffer],{type:"image/gif"});
-    const a=document.createElement("a");
-    a.href=URL.createObjectURL(gifBlob);
-    a.download=`dashcam_${new Date().toISOString()}.gif`;
+
+    await ffmpeg.writeFile("input.webm", uint8);
+
+    await ffmpeg.exec([
+      "-i","input.webm",
+      "-vf","fps=12,scale=720:-1:flags=lanczos",
+      "-loop","0",
+      "output.gif"
+    ]);
+
+    const data = await ffmpeg.readFile("output.gif");
+
+    const gifBlob = new Blob([data.buffer], { type:"image/gif" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(gifBlob);
+    a.download = `dashcam_${new Date().toISOString()}.gif`;
     a.click();
-  }catch(err){alert("GIF Conversion Failed:\n"+err);}
+
+  }catch(err){
+    alert("GIF Conversion Failed:\n"+err);
+  }
+
   statusText.innerText="";
   popup.style.display="none";
-  saveMP4.disabled = saveGIF.disabled = saveWebM.disabled = false;
+  saveGIF.disabled = saveMP4.disabled = saveWebM.disabled = false;
 };
 
 /* ---------- STOP CAMERA ---------- */

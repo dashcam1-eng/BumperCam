@@ -112,13 +112,13 @@ button {
   cursor:pointer;
 }
 
-/* ---------- MODIFIED START BUTTON (100% LARGER) ---------- */
+/* START BUTTON (100% LARGER) */
 #startBtn {
   padding:36px 52px;
   font-size:44px;
 }
 
-/* ---------- CONTROLS (Save + Stop) 100% LARGER & MOVED UP) ---------- */
+/* CONTROLS */
 .controls {
   position: absolute;
   bottom: 36%;
@@ -173,7 +173,7 @@ h1 {
   color:#0af;
 }
 
-/* MOBILE ADJUSTMENTS */
+/* MOBILE */
 @media(max-width:480px){
   .controls button, button{
     padding:10px 16px;
@@ -368,6 +368,11 @@ overlayCanvas.style.display = "none";
 document.body.appendChild(overlayCanvas);
 const ctx = overlayCanvas.getContext("2d");
 
+/* --- SPEEDOMETER VARS --- */
+let speedKmh = 0;
+let lastPos = null;
+let lastTime = null;
+
 /* ---------- CANVAS RESIZE ---------- */
 function resizeCanvas() {
   const rect = preview.getBoundingClientRect();
@@ -386,8 +391,6 @@ window.addEventListener("resize", () => setTimeout(resizeCanvas, 120));
 window.addEventListener("orientationchange", () => setTimeout(resizeCanvas, 250));
 
 /* ---------- DRAW OVERLAY ---------- */
-let speedKmh = 0;
-
 function drawOverlay() {
   if (!drawing) return;
 
@@ -419,8 +422,8 @@ function drawOverlay() {
   ctx.fillText(dateText, centerX - dateWidth/2, yPos);
   ctx.fillText(speedText, centerX - speedWidth/2, yPos + baseFontSize + 4);
 
-  /* ---------- WATERMARK ---------- */
-  ctx.font = `${baseFontSize * 1.6}px Arial`;
+  /* ---------- WATERMARK — ENLARGED 400% ---------- */
+  ctx.font = `${baseFontSize * 1.6 * 4}px Arial`;
   ctx.fillStyle = "rgba(255,255,255,0.85)";
   ctx.textBaseline = "bottom";
   const watermark = "Ridecam.ca";
@@ -431,6 +434,47 @@ function drawOverlay() {
 
   requestAnimationFrame(drawOverlay);
 }
+
+/* ---------- SPEED TRACKING ---------- */
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const toRad = x => x * Math.PI / 180;
+
+    const φ1 = toRad(lat1);
+    const φ2 = toRad(lat2);
+    const Δφ = toRad(lat2 - lat1);
+    const Δλ = toRad(lon2 - lon1);
+
+    const a = Math.sin(Δφ/2)**2 +
+              Math.cos(φ1)*Math.cos(φ2) *
+              Math.sin(Δλ/2)**2;
+
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function updateSpeed(position) {
+    const { latitude, longitude } = position.coords;
+    const now = position.timestamp;
+
+    if (lastPos && lastTime) {
+        const dist = calculateDistance(lastPos.lat, lastPos.lon, latitude, longitude);
+        const timeDiff = (now - lastTime) / 1000;
+
+        if (timeDiff > 0) {
+            const speedMs = dist / timeDiff;
+            speedKmh = speedMs * 3.6;
+        }
+    }
+
+    lastPos = { lat: latitude, lon: longitude };
+    lastTime = now;
+}
+
+navigator.geolocation.watchPosition(updateSpeed, console.error, {
+    enableHighAccuracy: true,
+    maximumAge: 1000,
+    timeout: 5000
+});
 
 /* ---------- START RECORDING ---------- */
 async function startRecording() {
@@ -466,6 +510,7 @@ async function startRecording() {
     };
 
     recorder.start(500);
+
   } catch (err) {
     alert("Camera access failed. Try tapping Start again.\n" + err);
   }
@@ -486,7 +531,7 @@ function pickMimeType() {
 
 startBtn.addEventListener("click", startRecording);
 
-/* ---------- SAVE VIDEO WITH 20s EXTRA ---------- */
+/* ---------- SAVE VIDEO ---------- */
 async function saveVideoBlob() {
   if (buffer.length === 0) return;
 

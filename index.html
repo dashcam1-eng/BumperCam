@@ -567,47 +567,40 @@ startBtn.addEventListener("click", startRecording);
 
 /* ---------- SAVE VIDEO ---------- */
 async function saveVideoBlob() {
-  if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+  if (!recorder || recorder.state !== "recording") return;
 
-  // --- 1. Stop the recorder to finalize the blob ---
-  mediaRecorder.stop();
-
-  // --- 2. Wait for final chunk ---
-  await new Promise((resolve) => {
-    const originalOnStop = mediaRecorder.onstop;
-    mediaRecorder.onstop = () => {
-      if (typeof originalOnStop === "function") originalOnStop();
-      resolve();
-    };
+  // 1. Wait for stop to finalize stream
+  const stopPromise = new Promise(resolve => {
+    recorder.addEventListener("stop", resolve, { once: true });
   });
 
-  // No data? nothing to save
-  if (buffer.length === 0) return;
+  recorder.stop();
+  await stopPromise; // recorder is now finalized; final chunk has been added
 
-  // --- 3. Build the complete video blob ---
+  if (buffer.length === 0) {
+    alert("No video data available.");
+    return;
+  }
+
+  // 2. Create finalized blob
   const blob = new Blob(buffer, { type: mimeType });
   const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-
   const url = URL.createObjectURL(blob);
 
-  // --- 4. Trigger download ---
+  // 3. Download
   const a = document.createElement("a");
-  a.download = `dashcam_${new Date().toISOString()}.${ext}`;
   a.href = url;
+  a.download = `dashcam_${new Date().toISOString()}.${ext}`;
   a.click();
 
-  // --- 5. Clear the old chunks ---
+  // 4. Clear buffer
   buffer.length = 0;
 
-  // Optional cleanup
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  // 5. Restart continuous recording with new buffer
+  recorder.start(500);
 
-  // --- 6. Immediately restart recording ---
-  mediaRecorder.start();
-
-  showSavedPopup(); // <-- your UI hook
+  showSavedPopup();
 }
-
 
 /* ---------- UPDATED AUTO-SAVE ---------- */
 saveBtn.addEventListener("click", () => {

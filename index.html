@@ -567,19 +567,47 @@ startBtn.addEventListener("click", startRecording);
 
 /* ---------- SAVE VIDEO ---------- */
 async function saveVideoBlob() {
+  if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+
+  // --- 1. Stop the recorder to finalize the blob ---
+  mediaRecorder.stop();
+
+  // --- 2. Wait for final chunk ---
+  await new Promise((resolve) => {
+    const originalOnStop = mediaRecorder.onstop;
+    mediaRecorder.onstop = () => {
+      if (typeof originalOnStop === "function") originalOnStop();
+      resolve();
+    };
+  });
+
+  // No data? nothing to save
   if (buffer.length === 0) return;
 
+  // --- 3. Build the complete video blob ---
   const blob = new Blob(buffer, { type: mimeType });
-  let ext = mimeType.includes("mp4") ? "mp4" : "webm";
+  const ext = mimeType.includes("mp4") ? "mp4" : "webm";
 
   const url = URL.createObjectURL(blob);
+
+  // --- 4. Trigger download ---
   const a = document.createElement("a");
   a.download = `dashcam_${new Date().toISOString()}.${ext}`;
   a.href = url;
   a.click();
 
-  showSavedPopup(); /* <-- new */
+  // --- 5. Clear the old chunks ---
+  buffer.length = 0;
+
+  // Optional cleanup
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+  // --- 6. Immediately restart recording ---
+  mediaRecorder.start();
+
+  showSavedPopup(); // <-- your UI hook
 }
+
 
 /* ---------- UPDATED AUTO-SAVE ---------- */
 saveBtn.addEventListener("click", () => {

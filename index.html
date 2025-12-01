@@ -581,89 +581,24 @@ async function saveVideoBlob() {
   showSavedPopup(); /* <-- new */
 }
 
-
-// Start a MediaRecorder segment
-function startSegmentRecording() {
-  buffer = [];
-  mediaRecorder = new MediaRecorder(stream, { mimeType });
-  
-  mediaRecorder.ondataavailable = (event) => {
-    if (event.data.size > 0) buffer.push(event.data);
-  };
-  
-  mediaRecorder.start(1000); // emits chunks every 1 second
-}
-
-// Save the current video segment
-async function saveVideoBlob() {
-  if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
-
-  // Stop the current MediaRecorder to finalize the file
-  mediaRecorder.stop();
-
-  // Wait for the stop event to fire before saving
-  mediaRecorder.onstop = () => {
-    if (buffer.length === 0) return;
-
-    const blob = new Blob(buffer, { type: mimeType });
-    const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `dashcam_${new Date().toISOString()}.${ext}`;
-    a.click();
-    URL.revokeObjectURL(url);
-
-    showSavedPopup();
-
-    // Start a new MediaRecorder segment for continuous recording
-    startSegmentRecording();
-  };
-}
-
 /* ---------- UPDATED AUTO-SAVE ---------- */
 saveBtn.addEventListener("click", () => {
-  if (buffer.length === 0) {
-    alert("No video recorded yet.");
-    return;
-  }
-
-  if (savingInProgress) return; // prevent double clicks
+  if (buffer.length === 0) { alert("No video recorded yet."); return; }
 
   saveNotice.style.display = "block";
   savingInProgress = true;
 
-  saveTimeout = setTimeout(async () => {
-    // Stop the recorder temporarily
+  saveTimeout = setTimeout(() => {
+
     if (recorder && recorder.state === "recording") {
-      // Create a temporary onstop handler
-      const originalOnStop = recorder.onstop;
       recorder.onstop = async () => {
-        await saveVideoBlob();       // save video
-        showSavedPopup();             // show popup
-        saveNotice.style.display = "none";
+        await saveVideoBlob();
+        saveNotice.style.display = "none"; /* <-- new */
         savingInProgress = false;
-
-        // Restore original onstop handler
-        recorder.onstop = originalOnStop;
-
-        // Restart recorder to continue recording
-        if (stream) {
-          const combinedStream = overlayCanvas.captureStream(30);
-          stream.getTracks().forEach(t => combinedStream.addTrack(t));
-          recorder = new MediaRecorder(combinedStream, { mimeType });
-          recorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-              buffer.push(e.data);
-              if (buffer.length > maxChunks) buffer.shift();
-            }
-          };
-          recorder.start(500);
-        }
       };
       recorder.stop();
     }
+
   }, 20000);
 });
 

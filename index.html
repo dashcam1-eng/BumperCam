@@ -151,6 +151,19 @@ button {
   color:white;
 }
 
+/* NEW: SAVE CONFIRMATION POPUP */
+#savedPopup {
+  display:none;
+  position:absolute;
+  top:40%;
+  width:100%;
+  text-align:center;
+  font-size:26px;
+  color:#0f0;
+  text-shadow:0 0 10px #000;
+  z-index:999;
+}
+
 /* OTHER PAGES */
 .page {
   display:none;
@@ -212,6 +225,9 @@ h1 {
       Recording 20 more seconds before saving. Press STOP to finish early.
     </div>
 
+    <!-- NEW: VIDEO SAVED POPUP -->
+    <div id="savedPopup">Video saved!</div>
+
     <div id="controls" class="controls">
       <button id="saveBtn" class="control-btn">Save Video</button>
       <button id="stopBtn" class="control-btn">Stop</button>
@@ -219,6 +235,7 @@ h1 {
   </div>
 
   <!-- FAQ -->
+  <!-- (unchanged, same as your file) -->
   <div id="faqPage" class="page">
     <h1>FAQ</h1>
     <div class="faq-item">
@@ -230,7 +247,7 @@ h1 {
       </p>
     </div>
 
-     <div class="faq-item">
+    <div class="faq-item">
       <h3>What file format does it save in?</h3>
       <p>The camera saves in Webmedia format which is the easiest, most reliable, and optimal in terms of size for this application. You can convert the file using online resources. </p>
     </div>
@@ -358,6 +375,9 @@ const stopBtn = document.getElementById("stopBtn");
 const description = document.getElementById("description");
 const saveNotice = document.getElementById("saveNotice");
 
+/* NEW */
+const savedPopup = document.getElementById("savedPopup");
+
 let mimeType = "";
 let drawing = false;
 let savingInProgress = false;
@@ -476,6 +496,12 @@ navigator.geolocation.watchPosition(updateSpeed, console.error, {
     timeout: 5000
 });
 
+/* ---------- SAVE POPUP FUNCTION ---------- */
+function showSavedPopup() {
+  savedPopup.style.display = "block";
+  setTimeout(() => savedPopup.style.display = "none", 4000);
+}
+
 /* ---------- START RECORDING ---------- */
 async function startRecording() {
   try {
@@ -543,9 +569,11 @@ async function saveVideoBlob() {
   a.download = `dashcam_${new Date().toISOString()}.${ext}`;
   a.href = url;
   a.click();
+
+  showSavedPopup(); /* <-- new */
 }
 
-/* ---------- UPDATED AUTO-SAVE FIX (no corruption) ---------- */
+/* ---------- UPDATED AUTO-SAVE ---------- */
 saveBtn.addEventListener("click", () => {
   if (buffer.length === 0) { alert("No video recorded yet."); return; }
 
@@ -554,11 +582,10 @@ saveBtn.addEventListener("click", () => {
 
   saveTimeout = setTimeout(() => {
 
-    // Stop recorder so it flushes final chunks
     if (recorder && recorder.state === "recording") {
       recorder.onstop = async () => {
         await saveVideoBlob();
-        saveNotice.style.display = "none";
+        saveNotice.style.display = "none"; /* <-- new */
         savingInProgress = false;
       };
       recorder.stop();
@@ -571,9 +598,11 @@ saveBtn.addEventListener("click", () => {
 stopBtn.addEventListener("click", () => {
   if (savingInProgress) {
     if (saveTimeout) clearTimeout(saveTimeout);
+
     saveVideoBlob();
+
+    saveNotice.style.display = "none"; /* <-- new */
     savingInProgress = false;
-    saveNotice.style.display = "none";
   } else {
     stopCamera();
   }

@@ -574,35 +574,33 @@ async function saveVideoBlob() {
 
   waitingForPostSave = true;
 
-  // 1. Stop current recording and save buffer
-  await finalizeSave(); // <-- split out your saving logic into a function
+  // 1. Stop current recording and export buffer
+  await finalizeSave();
 
-  // 2. Start a NEW recording for the next 20 seconds
-  buffer = []; 
-  recorder.start(500);
-
-  // auto-save after 20 seconds
+  // 2. Start new recorder for the next 20 seconds
+  startNewRecorder();     // <-- IMPORTANT: create brand new recorder
   postSaveTimeout = setTimeout(async () => {
     if (waitingForPostSave) {
-      await finalizeSave();
       waitingForPostSave = false;
+      await finalizeSave();
+      startNewRecorder(); // continue normal recording
     }
   }, 20000);
 }
 
-// called when user presses Stop manually
 async function stopEarly() {
   if (waitingForPostSave) {
     clearTimeout(postSaveTimeout);
-    await finalizeSave();
     waitingForPostSave = false;
+    await finalizeSave();
+    startNewRecorder();
   } else {
-    recorder.stop();
+    if (recorder && recorder.state === "recording") recorder.stop();
   }
 }
 
 async function finalizeSave() {
-  // wait for stop event
+  // Wait for stop event
   const stopPromise = new Promise(resolve => {
     recorder.addEventListener("stop", resolve, { once: true });
   });
@@ -610,25 +608,41 @@ async function finalizeSave() {
   recorder.stop();
   await stopPromise;
 
-  if (buffer.length === 0) {
-    console.warn("No video data");
-    return;
-  }
+  if (buffer.length === 0) return;
 
+  // Assemble blob
   const blob = new Blob(buffer, { type: mimeType });
   const ext = mimeType.includes("mp4") ? "mp4" : "webm";
   const url = URL.createObjectURL(blob);
 
-  // download
+  // Download
   const a = document.createElement("a");
   a.href = url;
   a.download = `dashcam_${new Date().toISOString()}.${ext}`;
   a.click();
 
-  buffer.length = 0;
+  buffer = [];
   showSavedPopup();
 }
 
+/* ---------- CREATE A NEW RECORDER AFTER STOP ---------- */
+function startNewRecorder() {
+  const combinedStream = overlayCanvas.captureStream(30);
+  stream.getTracks().forEach(t => combinedStream.addTrack(t));
+
+  buffer = [];
+
+  recorder = new MediaRecorder(combinedStream, { mimeType });
+
+  recorder.ondataavailable = (e) => {
+    if (e.data.size > 0) {
+      buffer.push(e.data);
+      if (buffer.length > maxChunks) buffer.shift();
+    }
+  };
+
+  recorder.start(500);
+}
 
 
 

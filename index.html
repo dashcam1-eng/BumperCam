@@ -630,26 +630,7 @@ async function finalizeSave() {
 }
 
 
-/* ---------- UPDATED AUTO-SAVE ---------- */
-saveBtn.addEventListener("click", () => {
-  if (buffer.length === 0) { alert("No video recorded yet."); return; }
 
-  saveNotice.style.display = "block";
-  savingInProgress = true;
-
-  saveTimeout = setTimeout(() => {
-
-    if (recorder && recorder.state === "recording") {
-      recorder.onstop = async () => {
-        await saveVideoBlob();
-        saveNotice.style.display = "none"; /* <-- new */
-        savingInProgress = false;
-      };
-      recorder.stop();
-    }
-
-  }, 20000);
-});
 
 /* ---------- STOP BUTTON ---------- */
 stopBtn.addEventListener("click", () => {

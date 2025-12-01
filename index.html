@@ -569,7 +569,9 @@ startBtn.addEventListener("click", startRecording);
 async function saveVideoBlob() {
   if (buffer.length === 0) return;
 
-  const blob = new Blob(buffer, { type: mimeType });
+  // Copy buffer to prevent corruption from ongoing recording
+  const snapshot = buffer.slice(); 
+  const blob = new Blob(snapshot, { type: mimeType });
   let ext = mimeType.includes("mp4") ? "mp4" : "webm";
 
   const url = URL.createObjectURL(blob);
@@ -578,8 +580,9 @@ async function saveVideoBlob() {
   a.href = url;
   a.click();
 
-  showSavedPopup(); /* <-- new */
+  showSavedPopup(); // works for every save
 }
+
 
 /* ---------- UPDATED AUTO-SAVE ---------- */
 saveBtn.addEventListener("click", () => {

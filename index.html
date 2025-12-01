@@ -583,22 +583,46 @@ async function saveVideoBlob() {
 
 /* ---------- UPDATED AUTO-SAVE ---------- */
 saveBtn.addEventListener("click", () => {
-  if (buffer.length === 0) { alert("No video recorded yet."); return; }
+  if (buffer.length === 0) {
+    alert("No video recorded yet.");
+    return;
+  }
+
+  if (savingInProgress) return; // prevent double clicks
 
   saveNotice.style.display = "block";
   savingInProgress = true;
 
-  saveTimeout = setTimeout(() => {
-
+  saveTimeout = setTimeout(async () => {
+    // Stop the recorder temporarily
     if (recorder && recorder.state === "recording") {
+      // Create a temporary onstop handler
+      const originalOnStop = recorder.onstop;
       recorder.onstop = async () => {
-        await saveVideoBlob();
-        saveNotice.style.display = "none"; /* <-- new */
+        await saveVideoBlob();       // save video
+        showSavedPopup();             // show popup
+        saveNotice.style.display = "none";
         savingInProgress = false;
+
+        // Restore original onstop handler
+        recorder.onstop = originalOnStop;
+
+        // Restart recorder to continue recording
+        if (stream) {
+          const combinedStream = overlayCanvas.captureStream(30);
+          stream.getTracks().forEach(t => combinedStream.addTrack(t));
+          recorder = new MediaRecorder(combinedStream, { mimeType });
+          recorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              buffer.push(e.data);
+              if (buffer.length > maxChunks) buffer.shift();
+            }
+          };
+          recorder.start(500);
+        }
       };
       recorder.stop();
     }
-
   }, 20000);
 });
 

@@ -566,41 +566,69 @@ function pickMimeType() {
 startBtn.addEventListener("click", startRecording);
 
 /* ---------- SAVE VIDEO ---------- */
+let postSaveTimeout = null;
+let waitingForPostSave = false;
+
 async function saveVideoBlob() {
   if (!recorder || recorder.state !== "recording") return;
 
-  // 1. Wait for stop to finalize stream
+  waitingForPostSave = true;
+
+  // 1. Stop current recording and save buffer
+  await finalizeSave(); // <-- split out your saving logic into a function
+
+  // 2. Start a NEW recording for the next 20 seconds
+  buffer = []; 
+  recorder.start(500);
+
+  // auto-save after 20 seconds
+  postSaveTimeout = setTimeout(async () => {
+    if (waitingForPostSave) {
+      await finalizeSave();
+      waitingForPostSave = false;
+    }
+  }, 20000);
+}
+
+// called when user presses Stop manually
+async function stopEarly() {
+  if (waitingForPostSave) {
+    clearTimeout(postSaveTimeout);
+    await finalizeSave();
+    waitingForPostSave = false;
+  } else {
+    recorder.stop();
+  }
+}
+
+async function finalizeSave() {
+  // wait for stop event
   const stopPromise = new Promise(resolve => {
     recorder.addEventListener("stop", resolve, { once: true });
   });
 
   recorder.stop();
-  await stopPromise; // recorder is now finalized; final chunk has been added
+  await stopPromise;
 
   if (buffer.length === 0) {
-    alert("No video data available.");
+    console.warn("No video data");
     return;
   }
 
-  // 2. Create finalized blob
   const blob = new Blob(buffer, { type: mimeType });
   const ext = mimeType.includes("mp4") ? "mp4" : "webm";
   const url = URL.createObjectURL(blob);
 
-  // 3. Download
+  // download
   const a = document.createElement("a");
   a.href = url;
   a.download = `dashcam_${new Date().toISOString()}.${ext}`;
   a.click();
 
-  // 4. Clear buffer
   buffer.length = 0;
-
-  // 5. Restart continuous recording with new buffer
-  recorder.start(500);
-
   showSavedPopup();
 }
+
 
 /* ---------- UPDATED AUTO-SAVE ---------- */
 saveBtn.addEventListener("click", () => {

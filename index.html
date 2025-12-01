@@ -567,45 +567,20 @@ startBtn.addEventListener("click", startRecording);
 
 /* ---------- SAVE VIDEO ---------- */
 async function saveVideoBlob() {
-  if (!recorder || buffer.length === 0) return;
+  if (buffer.length === 0) return;
 
-  // Only WebM is safe for multiple saves
-  if (!mimeType.includes("webm")) {
-    alert("Multiple saves are only supported in WebM format.");
-    return;
-  }
+  const currentBuffer = buffer.slice(); // copy current chunks
+  const blob = new Blob(currentBuffer, { type: mimeType });
+  let ext = mimeType.includes("mp4") ? "mp4" : "webm";
 
-  // Copy the current rolling buffer (last 5 minutes)
-  const snapshot = buffer.slice();
-
-  // Array to store the latest chunk from requestData
-  const finalChunks = [];
-
-  // Listen for the next dataavailable event
-  const onDataAvailable = (e) => {
-    if (e.data && e.data.size > 0) finalChunks.push(e.data);
-  };
-  recorder.addEventListener("dataavailable", onDataAvailable, { once: true });
-
-  // Request the latest chunk from the recorder
-  recorder.requestData();
-
-  // Give it a brief moment for the chunk to arrive
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  // Combine rolling buffer + latest chunk
-  const allChunks = snapshot.concat(finalChunks);
-  const blob = new Blob(allChunks, { type: mimeType });
-  const ext = "webm";
-
-  // Trigger download
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
   a.download = `dashcam_${new Date().toISOString()}.${ext}`;
+  a.href = url;
   a.click();
 
-  showSavedPopup(); // Works for every save
+  URL.revokeObjectURL(url);
+  showSavedPopup();
 }
 
 

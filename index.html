@@ -566,85 +566,41 @@ function pickMimeType() {
 startBtn.addEventListener("click", startRecording);
 
 /* ---------- SAVE VIDEO ---------- */
-let postSaveTimeout = null;
-let waitingForPostSave = false;
-
 async function saveVideoBlob() {
-  if (!recorder || recorder.state !== "recording") return;
-
-  waitingForPostSave = true;
-
-  // 1. Stop current recording and export buffer
-  await finalizeSave();
-
-  // 2. Start new recorder for the next 20 seconds
-  startNewRecorder();     // <-- IMPORTANT: create brand new recorder
-  postSaveTimeout = setTimeout(async () => {
-    if (waitingForPostSave) {
-      waitingForPostSave = false;
-      await finalizeSave();
-      startNewRecorder(); // continue normal recording
-    }
-  }, 20000);
-}
-
-async function stopEarly() {
-  if (waitingForPostSave) {
-    clearTimeout(postSaveTimeout);
-    waitingForPostSave = false;
-    await finalizeSave();
-    startNewRecorder();
-  } else {
-    if (recorder && recorder.state === "recording") recorder.stop();
-  }
-}
-
-async function finalizeSave() {
-  // Wait for stop event
-  const stopPromise = new Promise(resolve => {
-    recorder.addEventListener("stop", resolve, { once: true });
-  });
-
-  recorder.stop();
-  await stopPromise;
-
   if (buffer.length === 0) return;
 
-  // Assemble blob
   const blob = new Blob(buffer, { type: mimeType });
-  const ext = mimeType.includes("mp4") ? "mp4" : "webm";
-  const url = URL.createObjectURL(blob);
+  let ext = mimeType.includes("mp4") ? "mp4" : "webm";
 
-  // Download
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
   a.download = `dashcam_${new Date().toISOString()}.${ext}`;
+  a.href = url;
   a.click();
 
-  buffer = [];
-  showSavedPopup();
+  showSavedPopup(); /* <-- new */
 }
 
-/* ---------- CREATE A NEW RECORDER AFTER STOP ---------- */
-function startNewRecorder() {
-  const combinedStream = overlayCanvas.captureStream(30);
-  stream.getTracks().forEach(t => combinedStream.addTrack(t));
+/* ---------- UPDATED AUTO-SAVE ---------- */
+saveBtn.addEventListener("click", () => {
+  if (buffer.length === 0) { alert("No video recorded yet."); return; }
 
-  buffer = [];
+  saveNotice.style.display = "block";
+  savingInProgress = true;
 
-  recorder = new MediaRecorder(combinedStream, { mimeType });
+  saveTimeout = setTimeout(() => {
 
-  recorder.ondataavailable = (e) => {
-    if (e.data.size > 0) {
-      buffer.push(e.data);
-      if (buffer.length > maxChunks) buffer.shift();
+    if (recorder && recorder.state === "recording") {
+      recorder.onstop = async () => {
+        await saveVideoBlob();
+        saveNotice.style.display = "none"; /* <-- new */
+        savingInProgress = false;
+      };
+      recorder.stop();
     }
-  };
 
-  recorder.start(500);
-}
-
-
+  }, 20000);
+});
 
 /* ---------- STOP BUTTON ---------- */
 stopBtn.addEventListener("click", () => {

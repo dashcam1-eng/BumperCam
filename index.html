@@ -660,7 +660,11 @@ function finishSaving() {
 
   savingInProgress = false;
 
-
+  // If the user pressed STOP while saving, handle it
+  if (stopRequestedDuringSave) {
+    stopRequestedDuringSave = false;
+    stopCamera();
+  }
 }
 
 // Track if STOP was pressed during saving

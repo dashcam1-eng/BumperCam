@@ -611,11 +611,12 @@ function stopCamera() {
     }
   } catch(e){}
 
-  if (stream) {
+  // Only stop tracks if it's a new recording, not the preloaded one
+  if (stream && stream !== preloadedStream) {
     stream.getTracks().forEach(t => t.stop());
   }
 
-  preview.srcObject = null;
+  preview.srcObject = preloadedStream; // keep the preview ready
   preview.style.display = "none";
   overlayCanvas.style.display = "none";
   drawing = false;

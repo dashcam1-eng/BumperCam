@@ -576,14 +576,21 @@ async function startRecording() {
     buffer = [];
     recorder = new MediaRecorder(combinedStream, { mimeType });
 
-    recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) {
-        buffer.push(e.data);
-        if (buffer.length > maxChunks) buffer.shift();
-      }
-    };
+   // --- OPTION A (rolling buffer, correct implementation) ---
+const BUFFER_SECONDS = 300;   // 5 minutes
+const TIMESLICE = 1000;       // 1 sec per chunk
+const MAX_CHUNKS = BUFFER_SECONDS * (1000 / TIMESLICE); // 300 chunks
 
-    recorder.start(500);
+recorder.start(TIMESLICE);
+
+recorder.ondataavailable = (e) => {
+  if (e.data.size > 0) buffer.push(e.data);
+
+  // Keep last 5 minutes only
+  while (buffer.length > MAX_CHUNKS) {
+    buffer.shift();
+  }
+};
 
   } catch (err) {
     alert("Camera access failed. Try tapping Start again.\n" + err);

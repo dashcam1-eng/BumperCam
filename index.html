@@ -630,17 +630,47 @@ function stopCamera() {
   buffer = [];
 }
 /* ---------- SAVE VIDEO ---------- */
+// Save video button
 function saveVideo() {
   if (savingInProgress) return;
   savingInProgress = true;
 
   saveNotice.innerText =
-    "Recording 5 more seconds before saving. Press STOP to finish early.";
+    "Saving Video";
   saveNotice.style.display = "block";
 
-  saveTimeout = setTimeout(() => finishSaving(), 5000);
-}
+  // Copy last 30 seconds of buffer (maxChunks)
+  const bufferCopy = buffer.slice();
 
+  const extraChunks = [];
+  const onExtraData = (e) => {
+    if (e.data.size > 0) extraChunks.push(e.data);
+  };
+
+  recorder.addEventListener("dataavailable", onExtraData);
+
+  saveTimeout = setTimeout(() => {
+    recorder.removeEventListener("dataavailable", onExtraData);
+
+    const allChunks = bufferCopy.concat(extraChunks);
+    const blob = new Blob(allChunks, { type: mimeType });
+
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "ridecam_" + new Date().toISOString().replace(/[:.]/g, "-") + ".webm";
+    a.click();
+
+    showSavedPopup();
+    saveNotice.style.display = "none";
+    savingInProgress = false;
+
+    if (stopRequestedDuringSave) {
+      stopRequestedDuringSave = false;
+      stopCamera();
+    }
+
+  }, 5000);
+}
 /* ---------- FINISH SAVING ---------- */
 function finishSaving() {
   saveNotice.style.display = "none";

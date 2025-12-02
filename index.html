@@ -577,7 +577,7 @@ async function startRecording() {
     recorder = new MediaRecorder(combinedStream, { mimeType });
 
    // --- OPTION A (rolling buffer, correct implementation) ---
-const BUFFER_SECONDS = 300;   // 5 minutes
+const BUFFER_SECONDS = 60;   // 5 minutes
 const TIMESLICE = 1000;       // 1 sec per chunk
 const MAX_CHUNKS = BUFFER_SECONDS * (1000 / TIMESLICE); // 300 chunks
 

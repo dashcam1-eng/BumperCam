@@ -611,25 +611,24 @@ function stopCamera() {
     }
   } catch(e){}
 
-  // Only stop tracks if it's a new recording, not the preloaded one
+  // Stop tracks only if it's a new recording
   if (stream && stream !== preloadedStream) {
     stream.getTracks().forEach(t => t.stop());
   }
 
-  preview.srcObject = preloadedStream; // keep the preview ready
+  preview.srcObject = preloadedStream; // keep preview ready
   preview.style.display = "none";
   overlayCanvas.style.display = "none";
   drawing = false;
 
   saveNotice.style.display = "none";
   controls.style.display = "none";
-  startBtn.style.display = "block";
-  description.style.display = "block";
+  startBtn.style.display = "block";      // <-- returns to start
+  description.style.display = "block";   // <-- shows description
 
   savingInProgress = false;
   buffer = [];
 }
-
 /* ---------- SAVE VIDEO ---------- */
 function saveVideo() {
   if (savingInProgress) return;
@@ -682,6 +681,11 @@ stopBtn.onclick = () => {
 /* ---------- BUTTON EVENTS ---------- */
 startBtn.onclick = startRecording;
 saveBtn.onclick = saveVideo;
+/* ---------- STOP BUTTON ---------- */
+stopBtn.onclick = () => {
+  // Stop recording and return to start screen
+  stopCamera();
+};
 </script>
 </body>
 </html>

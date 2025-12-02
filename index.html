@@ -639,44 +639,49 @@ function stopCamera() {
 /* ---------- SAVE VIDEO ---------- */
 // Save video button
 function saveVideo() {
-  if (savingInProgress) return;
-  savingInProgress = true;
+    if (savingInProgress) return;
+    savingInProgress = true;
 
-  saveNotice.innerText =
-    "Saving Video";
-  saveNotice.style.display = "block";
+    saveNotice.innerText = "Saving Video";
+    saveNotice.style.display = "block";
 
-  // Copy last 30 seconds of buffer (maxChunks)
-  const bufferCopy = buffer.slice();
+    // Array to collect final chunk(s)
+    const finalChunks = [];
+    const onExtraData = (e) => {
+        if (e.data && e.data.size > 0) finalChunks.push(e.data);
+    };
 
-  const extraChunks = [];
-  const onExtraData = (e) => {
-    if (e.data.size > 0) extraChunks.push(e.data);
-  };
+    // Listen for the final data
+    recorder.addEventListener("dataavailable", onExtraData);
 
-  recorder.addEventListener("dataavailable", onExtraData);
+    // Force MediaRecorder to flush the final chunk immediately
+    recorder.requestData();
 
-  saveTimeout = setTimeout(() => {
-    recorder.removeEventListener("dataavailable", onExtraData);
+    // Short delay to ensure final chunk is ready
+    setTimeout(() => {
+        recorder.removeEventListener("dataavailable", onExtraData);
 
-    const allChunks = bufferCopy.concat(extraChunks);
-    const blob = new Blob(allChunks, { type: mimeType });
+        // Combine rolling buffer + final chunk
+        const allChunks = buffer.slice().concat(finalChunks);
 
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "ridecam_" + new Date().toISOString().replace(/[:.]/g, "-") + ".webm";
-    a.click();
+        const blob = new Blob(allChunks, { type: mimeType });
 
-    showSavedPopup();
-    saveNotice.style.display = "none";
-    savingInProgress = false;
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "ridecam_" + new Date().toISOString().replace(/[:.]/g, "-") + ".webm";
+        a.click();
 
-    if (stopRequestedDuringSave) {
-      stopRequestedDuringSave = false;
-      stopCamera();
-    }
+        showSavedPopup();
+        saveNotice.style.display = "none";
+        savingInProgress = false;
 
-  }, 5000);
+        // If STOP was requested during save, handle it
+        if (stopRequestedDuringSave) {
+            stopRequestedDuringSave = false;
+            stopCamera();
+        }
+
+    }, 250); // 250ms is enough for MediaRecorder to provide the final chunk
 }
 /* ---------- FINISH SAVING ---------- */
 function finishSaving() {

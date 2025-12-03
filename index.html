@@ -559,6 +559,11 @@ async function startRecording() {
   stream = preloadedStream;
 }
 
+   // --- OPTION A (rolling buffer, correct implementation) ---
+const TIMESLICE = 1000;      // 1 second per chunk
+const BUFFER_30SEC = 30;     // last 30 seconds
+const BUFFER_10SEC = 10;     // last 10 seconds
+
     preview.srcObject = stream;
     preview.style.display = "block";
     startBtn.style.display = "none";
@@ -595,10 +600,7 @@ window.recorderRestartInterval = setInterval(() => {
 }, 30000); // 30 sec
 
 
-   // --- OPTION A (rolling buffer, correct implementation) ---
-const TIMESLICE = 1000;      // 1 second per chunk
-const BUFFER_30SEC = 30;     // last 30 seconds
-const BUFFER_10SEC = 10;     // last 10 seconds
+
 
 
 
